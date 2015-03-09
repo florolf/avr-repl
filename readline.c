@@ -170,7 +170,8 @@ restart:
 
 				break;
 			case CTRL('H'): // backspace
-				delete_to(position - 1);
+				if(position > 0)
+					delete_to(position - 1);
 
 				break;
 			case CTRL('W'): // delete word
