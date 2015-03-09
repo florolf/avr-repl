@@ -29,11 +29,8 @@ static void move_cursor(uint8_t col) {
 	position = col;
 }
 
-static void clear_line(void) {
+static void clear_line_after(void) {
 	puts_P(PSTR("\033[K"));
-
-	memset(line_buffer, 0, MAX_LINE_LENGTH);
-	line_length = 0;
 }
 
 static void delete_to(uint8_t idx) {
@@ -52,8 +49,11 @@ static void delete_to(uint8_t idx) {
 	}
 
 	memmove(line_buffer + a, line_buffer + b, line_length - b);
-
 	line_length -= b - a;
+
+	clear_line_after();
+	puts((char*)(line_buffer + a));
+	move_cursor(a);
 }
 
 static uint8_t find_word(bool forward) {
@@ -90,11 +90,13 @@ static uint8_t find_word(bool forward) {
 
 char *readline(const char *prompt) {
 restart:
-	clear_line();
-	position = 0;
+	memset(line_buffer, 0, MAX_LINE_LENGTH);
+	line_length = 0;
 
 	puts(prompt);
 	prompt_offset = strlen(prompt);
+
+	move_cursor(0);
 
 	while(1) {
 		uint8_t c = uart_getc();
@@ -160,11 +162,11 @@ restart:
 				goto restart;
 			case CTRL('U'): // clear
 				move_cursor(0);
-				clear_line();
+				clear_line_after();
 
 				break;
 			case CTRL('K'): // clear rest of line
-				clear_line();
+				clear_line_after();
 
 				break;
 			case CTRL('H'): // backspace
@@ -175,12 +177,12 @@ restart:
 				delete_to(find_word(false));
 				break;
 			case CTRL('J'): // enter
-				line_buffer[line_length - 1] = 0;
-
 				return (char*)line_buffer;
 			default: // insert self
 				line_buffer[line_length] = c;
 				line_length++;
+
+				line_buffer[line_length] = 0;
 
 				break;
 		}
