@@ -14,6 +14,7 @@
 
 #define CTRL(x) ((x) - 'A' + 1)
 #define ESC 27
+#define DEL 0x7f
 
 uint8_t line_buffer[MAX_LINE_LENGTH];
 uint8_t position;
@@ -24,36 +25,34 @@ void init_readline(void) {
 }
 
 static void move_cursor(uint8_t col) {
-	printf_P(PSTR("\033[%uG"), col + prompt_offset);
+	printf_P(PSTR("\033[%uG"), 1 + col + prompt_offset);
 
 	position = col;
 }
 
 static void clear_line_after(void) {
-	puts_P(PSTR("\033[K"));
+	printf_P(PSTR("\033[K"));
 }
 
-static void delete_to(uint8_t idx) {
-	if(idx >= line_length)
-		idx = line_length - 1;
+// deletes from 'from' to before 'to'
+static void delete_range(uint8_t from, uint8_t to) {
+	if(to >= line_length)
+		to = line_length - 1;
 
-	uint8_t a, b;
-	if(idx < position) {
-		a = idx;
-		b = position;
+	memmove(line_buffer + from, line_buffer + to, line_length - to + 1); // +1 is for \0
+	line_length -= to - from;
 
-		move_cursor(a);
-	} else {
-		a = position;
-		b = idx;
-	}
+	uint8_t new_pos;
+	if(position <= from)
+		new_pos = position;
+	else
+		new_pos = position - (to - from);
 
-	memmove(line_buffer + a, line_buffer + b, line_length - b);
-	line_length -= b - a;
-
+	move_cursor(from);
 	clear_line_after();
-	puts((char*)(line_buffer + a));
-	move_cursor(a);
+	printf("%s", (char*)(line_buffer + from));
+
+	move_cursor(new_pos);
 }
 
 static uint8_t find_word(bool forward) {
@@ -93,21 +92,28 @@ restart:
 	memset(line_buffer, 0, MAX_LINE_LENGTH);
 	line_length = 0;
 
-	puts(prompt);
+	printf("%s", prompt);
 	prompt_offset = strlen(prompt);
 
 	move_cursor(0);
 
 	while(1) {
-		uint8_t c = uart_getc();
+		uint8_t c = uart_getc_raw();
+		/*printf("\n");
+		printf("0x%02X", c);
+		if(isprint(c))
+			printf(" (%c)", c);
+
+		printf("\n");
+		continue; */
 
 		if(c == ESC) {
-			c = uart_getc();
+			c = uart_getc_raw();
 
 			if(c != '[')
 				continue;
 
-			c = uart_getc();
+			c = uart_getc_raw();
 			switch(c) {
 				case 'A': // up
 					break;
@@ -128,19 +134,19 @@ restart:
 					move_cursor(find_word(true));
 					break;
 				case '3': // delete
-					uart_getc(); // discard tilde
+					uart_getc_raw(); // discard tilde
 
-					delete_to(position + 1);
+					delete_range(position, position + 1);
 					break;
 				case '7': // home
-					uart_getc(); // discard tilde
+					uart_getc_raw(); // discard tilde
 
 					move_cursor(0);
 					break;
 				case '8': // end
-					uart_getc(); // discard tilde
+					uart_getc_raw(); // discard tilde
 
-					move_cursor(line_length - 1);
+					move_cursor(line_length);
 					break;
 			}
 
@@ -153,7 +159,7 @@ restart:
 
 				break;
 			case CTRL('E'): // end
-				move_cursor(line_length - 1);
+				move_cursor(line_length);
 
 				break;
 			case CTRL('C'): // abort
@@ -170,20 +176,28 @@ restart:
 
 				break;
 			case CTRL('H'): // backspace
+			case DEL:
 				if(position > 0)
-					delete_to(position - 1);
+					delete_range(position - 1, position);
 
 				break;
 			case CTRL('W'): // delete word
-				delete_to(find_word(false));
+				delete_range(find_word(false), position);
 				break;
 			case CTRL('J'): // enter
+			case '\r':
+				uart_putc_raw('\r');
+				uart_putc_raw('\n');
 				return (char*)line_buffer;
 			default: // insert self
+				if(line_length >= MAX_LINE_LENGTH)
+					break;
+
+				uart_putc(c);
+
 				line_buffer[line_length] = c;
 				line_length++;
-
-				line_buffer[line_length] = 0;
+				position++;
 
 				break;
 		}

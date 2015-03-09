@@ -59,7 +59,7 @@ static int ugetc(FILE *f) {
 
 void init_uart(void) {
 	UBRR0H = 0;
-	UBRR0L = 8;
+	UBRR0L = 103;
 
 	UCSR0A = (0 << U2X0);
 	UCSR0B = (1 << RXEN0) | (1 << TXEN0);
