@@ -45,7 +45,7 @@ static void delete_to(uint8_t idx) {
 		a = idx;
 		b = position;
 
-		position = a;
+		move_cursor(a);
 	} else {
 		a = position;
 		b = idx;
