@@ -36,8 +36,8 @@ static void clear_line_after(void) {
 
 // deletes from 'from' to before 'to'
 static void delete_range(uint8_t from, uint8_t to) {
-	if(to >= line_length)
-		to = line_length - 1;
+	if(to > line_length)
+		to = line_length;
 
 	memmove(line_buffer + from, line_buffer + to, line_length - to + 1); // +1 is for \0
 	line_length -= to - from;
@@ -193,11 +193,15 @@ restart:
 				if(line_length >= MAX_LINE_LENGTH)
 					break;
 
-				uart_putc(c);
-
-				line_buffer[line_length] = c;
+				memmove(line_buffer + position + 1, line_buffer + position, line_length - position + 1);
+				line_buffer[position] = c;
 				line_length++;
+
+				clear_line_after();
+				printf("%s", (char*)(line_buffer + position));
+
 				position++;
+				move_cursor(position);
 
 				break;
 		}
