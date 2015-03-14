@@ -5,7 +5,7 @@ build:
 
 flash: build
 	touch tty.lock
-	screen -X -S tty quit
+	screen -X -S tty quit || true
 	avrdude -b 57600 -p atmega328p -c arduino -P /dev/ttyUSB0 -U flash:w:firmware.hex
 	rm tty.lock
 
