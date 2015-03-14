@@ -63,7 +63,15 @@ static void execute(char *line) {
 		fn = lookup_cmd(cmds, argv[0]);
 
 	if(!fn) {
-		printf_P(PSTR("unknown command: %s\n"), argv[0]);
+		printf_P(PSTR("unknown command: %s\n\n"), argv[0]);
+		printf_P(PSTR("available commands are:\n"));
+
+		for(uint8_t i = 0; core_cmds[i].name; i++)
+			printf_P(PSTR(" - %s (core)\n"), core_cmds[i].name);
+
+		for(uint8_t i = 0; cmds[i].name; i++)
+			printf_P(PSTR(" - %s\n"), cmds[i].name);
+
 		return;
 	}
 
