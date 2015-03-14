@@ -24,8 +24,12 @@ uint8_t line_length;
 void init_readline(void) {
 }
 
+static void move_cursor_absolute(uint8_t col) {
+	printf_P(PSTR("\033[%uG"), 1 + col);
+}
+
 static void move_cursor(uint8_t col) {
-	printf_P(PSTR("\033[%uG"), 1 + col + prompt_offset);
+	move_cursor_absolute(prompt_offset + col);
 
 	position = col;
 }
@@ -167,12 +171,12 @@ restart:
 
 				goto restart;
 			case CTRL('U'): // clear
-				move_cursor(0);
+				move_cursor(-prompt_offset);
 				clear_line_after();
 
-				break;
+				goto restart;
 			case CTRL('K'): // clear rest of line
-				clear_line_after();
+				delete_range(position, line_length);
 
 				break;
 			case CTRL('H'): // backspace
