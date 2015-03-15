@@ -23,14 +23,6 @@ static void skipws(char **p) {
 
 #define MAX_ARGS 8
 
-static cmd_fn_t lookup_cmd(struct command *list, const char *name) {
-	for(uint8_t i = 0; list[i].name; i++)
-		if(!strcmp(list[i].name, name))
-			return list[i].fn;
-
-	return NULL;
-}
-
 static void execute(char *line) {
 	char *argv[MAX_ARGS];
 	int argc = 0;
